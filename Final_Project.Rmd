@@ -1,0 +1,40 @@
+---
+title: "Final Project"
+author: "Jackson Waschura, Bryan Liu, Camille Garlick, Eshley Freed-Doerr"
+date: "5/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, include=FALSE)
+```
+
+```{r}
+library(readxl)
+library(tidyverse)
+```
+
+# Understanding US School Expenditures and Test Scores
+
+## Get the Data
+
+```{r}
+schools <- read_excel(here::here("data", "US_schools_data.xlsx"))
+```
+
+## Clean the Data
+
+```{r}
+# Don't overthink this! Professor has outlined everything we need to do.
+# Read the instructions before coming up with anything since she might have
+# already told us
+
+# Select the relevant columns
+schools %>% select()
+```
+
+## Data Visualization
+
+## Linear Regression
+
+
