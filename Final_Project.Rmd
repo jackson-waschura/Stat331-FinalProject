@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, include=FALSE)
+knitr::opts_chunk$set(echo = FALSE, fig.align = 'center', message = FALSE, warning = FALSE)
 ```
 
 ```{r}
@@ -24,16 +24,107 @@ schools <- read_excel(here::here("data", "US_schools_data.xlsx"))
 
 ## Clean the Data
 
-```{r}
-# Don't overthink this! Professor has outlined everything we need to do.
-# Read the instructions before coming up with anything since she might have
-# already told us
 
+```{r}
 # Select the relevant columns
-schools %>% select()
+schools <- schools %>% 
+  select(PRIMARY_KEY, ends_with(c("EXPENDITURE", "READING", "MATHEMATICS")))
 ```
 
+```{r}
+# Split primary key
+schools <- schools %>% 
+  mutate(
+    YEAR = as.integer(str_extract(PRIMARY_KEY, "^\\d{4}")),
+    STATE = str_extract(PRIMARY_KEY, "(?<=\\d{4}_).*")
+  ) %>%
+  select(YEAR, STATE, TOTAL_EXPENDITURE:G08_TR_A_MATHEMATICS) 
+```
+
+
+```{r}
+# Pivot longer
+schools <- schools %>% 
+  pivot_longer(
+    cols = ends_with(c("MATHEMATICS", "READING")),
+    names_to = c("GRADE", "RACE", "SEX", "TEST"),
+    values_to = "SCORE",
+    names_sep = "_"
+  )
+```
+
+
+```{r}
+# Seperate into regions
+# Note: DODEA stands for "Department of Defense Education Activity," which are 
+# DoD sponsored schools located in Virginia. Due to this, DODEA is put into 
+# the same geographic region as Virginia.
+# Additionally, National is grouped into its own region.
+
+northeast <- c("MAINE", "NEW_HAMPHSIRE", "VERMONT", "MASSACHUSETTS", "RHODE_ISLAND", "CONNECTICUT", "NEW_YORK", "NEW_JERSEY", "PENNSYLVANIA")
+midwest <- c("OHIO", "MICHIGAN", "INDIANA", "WISCONSIN", "ILLINOIS", "MINNESOTA", "IOWA", "MISSOURI", "NORTH_DAKOTA", "SOUTH_DAKOTA", "NEBRASKA", "KANSAS")
+south <- c("DELAWARE", "MARYLAND", "VIRGINIA", "WEST_VIRGINIA", "KENTUCKY", "NORTH_CAROLINA", "SOUTH_CAROLINA", "TENNESSEE", "GEORGIA", "FLORIDA", "ALABAMA", "MISSISSIPPI", "ARKANSAS", "LOUISIANA", "TEXAS", "OKLAHOMA", "DISTRICT_OF_COLUMBIA")
+west <- c("MONTANA", "IDAHO", "WYOMING", "COLORADO", "NEW_MEXICO", "ARIZONA", "UTAH", "NEVADA", "CALIFORNIA", "OREGON", "WASHINGTON", "ALASKA", "HAWAII")
+
+
+schools <- schools %>%
+  mutate(
+    REGION = as.factor(case_when(
+      STATE %in% northeast ~ "Northeast",
+      STATE %in% midwest ~ "Midwest",
+      STATE %in% south ~ "South",
+      STATE %in% west ~ "West",
+      STATE=="NATIONAL" ~ "NATIONAL"
+    ))
+  )
+
+
+# Write more on later: grouping based off geography is significant as geography correlates with lots of significant factors, such as political views of population, major industries, etc.
+```
+
+```{r}
+# Additional cleaning here maybe lmao
+```
+
+
 ## Data Visualization
+
+### Relationship between Instructional Expenditures and Testing Scores by Region
+
+```{r, fig.height = 5}
+# Excluding National: nothing significant about National here
+
+schools %>%
+  filter(REGION!="NATIONAL") %>%
+  ggplot(mapping=aes(color=REGION)) +
+  geom_point(mapping=aes(y=SCORE, x=INSTRUCTION_EXPENDITURE), show.legend=FALSE) +
+  facet_wrap(~ REGION, ncol = 2)
+```
+
+### Distribution of Math and Reading Test Scores
+
+```{r}
+schools %>%
+  filter(REGION!="NATIONAL") %>%
+  ggplot(aes(x=SCORE, fill=TEST)) + 
+  geom_histogram(alpha=0.6, position="identity")
+```
+
+
+### School Instructional Expenditures and Test Scores Over Time by Region
+
+
+```{r, fig.width=10}
+schools %>%
+  filter(REGION!="NATIONAL", !is.na(INSTRUCTION_EXPENDITURE) & !is.na(SCORE)) %>%
+  mutate(
+    DECADE = floor(YEAR/10) * 10
+  ) %>%
+  ggplot(mapping=aes(color=REGION)) +
+  geom_point(mapping=aes(y=SCORE, x=INSTRUCTION_EXPENDITURE), show.legend=FALSE) +
+  facet_grid(REGION ~ DECADE)
+```
+
 
 ## Linear Regression
 
