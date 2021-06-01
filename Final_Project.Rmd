@@ -130,5 +130,8 @@ schools %>%
 
 
 ## Linear Regression
+#based off the linear model, we can use the predict function to predict values using the machine's knowledge of the current values. 
 
-
+schools.lm = lm(school~MATHEMATICS + READING, data = schools)
+predict(schools.lm, newData = MATHEMATICS)
+predict(schools.lm, newData = READING)
