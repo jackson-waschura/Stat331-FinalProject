@@ -75,10 +75,10 @@ schools <- schools %>%
       STATE %in% south ~ "South",
       STATE %in% west ~ "West",
       STATE=="NATIONAL" ~ "NATIONAL"
-    ))
+    )),
+    SEX = as.factor(SEX),
+    RACE = as.factor(RACE)
   )
-
-
 # Write more on later: grouping based off geography is significant as geography correlates with lots of significant factors, such as political views of population, major industries, etc.
 ```
 
@@ -130,8 +130,125 @@ schools %>%
 
 
 ## Linear Regression
-#based off the linear model, we can use the predict function to predict values using the machine's knowledge of the current values. 
 
-schools.lm = lm(school~MATHEMATICS + READING, data = schools)
-predict(schools.lm, newData = MATHEMATICS)
-predict(schools.lm, newData = READING)
+```{r}
+# Model Reading
+schools.lm = lm(SCORE~INSTRUCTION_EXPENDITURE,
+                data=filter(.data=schools, TEST == "READING"))
+broom::glance(schools.lm)$r.squared
+```
+
+```{r}
+# Model Mathematics
+
+schools.lm = lm(SCORE~INSTRUCTION_EXPENDITURE,
+                data=filter(.data=schools, TEST == "MATHEMATICS"))
+broom::glance(schools.lm)$r.squared
+```
+
+```{r}
+# Modeling both tests
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE, data=schools)
+broom::glance(schools.lm)$r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR, data=schools)
+broom::glance(schools.lm)$r.squared
+```
+### Selecting the "Best" Model
+Describe the process we take (iteratively growing the model until adjusted R squared is maximized).
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+SEX, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+RACE, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+REGION, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+So we should add grade and continue searching.
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+SEX, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+REGION, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+So we should add race and continue searching.
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE+SEX, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE+REGION, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+So we should add region and continue searching.
+
+```{r}
+# Modeling with additional variables
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE+REGION+SEX, data=schools)
+broom::glance(schools.lm)$adj.r.squared
+```
+
+So we finally add sex as well and we have run out of individual predictors to add. The final model we chose included the test, instruction expenditure, year, grade, race, region, and sex as predictors. It achieved the maximal adjusted R squared at 0.9215.
+
+```{r}
+# One scatter plot for each test. X axis is instruction expenditure / year
+# Show aggreagate, then plot again with the grades broken up,
+
+summary(schools.lm)
+```

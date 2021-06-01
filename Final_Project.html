@@ -196,6 +196,64 @@ pre code {
 </div>
 <div id="linear-regression" class="section level2">
 <h2>Linear Regression</h2>
+<pre><code>## [1] 0.003834639</code></pre>
+<pre><code>## [1] 0.004520971</code></pre>
+<pre><code>## [1] 0.1290113</code></pre>
+<pre><code>## [1] 0.1572277</code></pre>
+<div id="selecting-the-best-model" class="section level3">
+<h3>Selecting the “Best” Model</h3>
+<p>Describe the process we take (iteratively growing the model until adjusted R squared is maximized).</p>
+<pre><code>## [1] 0.1569139</code></pre>
+<pre><code>## [1] 0.8285346</code></pre>
+<pre><code>## [1] 0.1613105</code></pre>
+<pre><code>## [1] 0.2386494</code></pre>
+<pre><code>## [1] 0.1662223</code></pre>
+<p>So we should add grade and continue searching.</p>
+<pre><code>## [1] 0.8318095</code></pre>
+<pre><code>## [1] 0.9085199</code></pre>
+<pre><code>## [1] 0.8407402</code></pre>
+<p>So we should add race and continue searching.</p>
+<pre><code>## [1] 0.9109178</code></pre>
+<pre><code>## [1] 0.9191038</code></pre>
+<p>So we should add region and continue searching.</p>
+<pre><code>## [1] 0.9215057</code></pre>
+<p>So we finally add sex as well and we have run out of individual predictors to add. The final model we chose included the test, instruction expenditure, year, grade, race, region, and sex as predictors. It achieved the maximal adjusted R squared at 0.9215.</p>
+<pre><code>## 
+## Call:
+## lm(formula = SCORE ~ TEST + INSTRUCTION_EXPENDITURE + YEAR + 
+##     GRADE + RACE + REGION + SEX, data = schools)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -40.377  -4.452   0.422   4.927  31.757 
+## 
+## Coefficients:
+##                           Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept)             -9.935e+02  3.139e+01  -31.648  &lt; 2e-16 ***
+## TESTREADING             -1.695e+01  1.656e-01 -102.394  &lt; 2e-16 ***
+## INSTRUCTION_EXPENDITURE  9.358e-09  1.179e-08    0.794    0.427    
+## YEAR                     6.136e-01  1.565e-02   39.211  &lt; 2e-16 ***
+## GRADEG08                 4.328e+01  1.662e-01  260.484  &lt; 2e-16 ***
+## RACEAM                  -2.012e+01  6.619e-01  -30.397  &lt; 2e-16 ***
+## RACEAS                   1.559e+01  4.402e-01   35.421  &lt; 2e-16 ***
+## RACEBL                  -1.846e+01  3.799e-01  -48.591  &lt; 2e-16 ***
+## RACEHI                  -1.165e+01  3.712e-01  -31.384  &lt; 2e-16 ***
+## RACEHP                  -1.712e+01  1.589e+00  -10.776  &lt; 2e-16 ***
+## RACETR                   2.214e+00  4.634e-01    4.778 1.80e-06 ***
+## RACEWH                   8.040e+00  3.618e-01   22.224  &lt; 2e-16 ***
+## REGIONNortheast          2.418e+00  2.762e-01    8.755  &lt; 2e-16 ***
+## REGIONSouth             -4.646e+00  2.208e-01  -21.039  &lt; 2e-16 ***
+## REGIONWest              -3.551e+00  2.355e-01  -15.079  &lt; 2e-16 ***
+## SEXF                     1.927e+00  2.449e-01    7.867 4.12e-15 ***
+## SEXM                    -1.899e+00  2.449e-01   -7.754 1.00e-14 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 7.358 on 7907 degrees of freedom
+##   (60676 observations deleted due to missingness)
+## Multiple R-squared:  0.9217, Adjusted R-squared:  0.9215 
+## F-statistic:  5814 on 16 and 7907 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
 </div>
 </div>
 
