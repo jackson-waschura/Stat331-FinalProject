@@ -95,19 +95,21 @@ schools <- schools %>%
 # Excluding National: nothing significant about National here
 
 schools %>%
-  filter(REGION!="NATIONAL") %>%
+  filter(REGION!="NATIONAL", !is.na(INSTRUCTION_EXPENDITURE) & !is.na(SCORE)) %>%
   ggplot(mapping=aes(color=REGION)) +
   geom_point(mapping=aes(y=SCORE, x=INSTRUCTION_EXPENDITURE), show.legend=FALSE) +
-  facet_wrap(~ REGION, ncol = 2)
+  facet_wrap(~ REGION, ncol = 2) +
+  labs(title = "Instructional Expenditures and Testing Scores by Region")
 ```
 
 ### Distribution of Math and Reading Test Scores
 
 ```{r}
 schools %>%
-  filter(REGION!="NATIONAL") %>%
+  filter(REGION!="NATIONAL", !is.na(SCORE), RACE=="A", SEX=="A") %>%
   ggplot(aes(x=SCORE, fill=TEST)) + 
-  geom_histogram(alpha=0.6, position="identity")
+  geom_histogram(alpha=0.6, position="identity", bins = 50) +
+  labs(title = "Distribution of Math and Reading Test Scores")
 ```
 
 
@@ -122,7 +124,8 @@ schools %>%
   ) %>%
   ggplot(mapping=aes(color=REGION)) +
   geom_point(mapping=aes(y=SCORE, x=INSTRUCTION_EXPENDITURE), show.legend=FALSE) +
-  facet_grid(REGION ~ DECADE)
+  facet_grid(REGION ~ DECADE) +
+  labs(title = "School Instructional Expenditures and Test Scores Over Time by Region")
 ```
 
 
