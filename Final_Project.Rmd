@@ -83,7 +83,24 @@ schools <- schools %>%
 ```
 
 ```{r}
+schools %>% distinct(RACE)
+```
+
+```{r}
 # Additional cleaning here maybe lmao
+schools <- schools %>%
+  filter(!is.na(SCORE)) %>%
+  filter(REGION != "NATIONAL") %>%
+  mutate(RACE=fct_recode(RACE,
+                         All="A",
+                         White="WH",
+                         Black="BL",
+                         Hispanic="HI",
+                         Asian="AS",
+                         `American Indian`="AM",
+                         `Pacific Islander`="HP",
+                         `Two or more races`="TR"),
+         SEX = fct_recode(SEX, All="A", Male="M", Female="F"))
 ```
 
 
@@ -247,8 +264,34 @@ broom::glance(schools.lm)$adj.r.squared
 So we finally add sex as well and we have run out of individual predictors to add. The final model we chose included the test, instruction expenditure, year, grade, race, region, and sex as predictors. It achieved the maximal adjusted R squared at 0.9215.
 
 ```{r}
-# One scatter plot for each test. X axis is instruction expenditure / year
-# Show aggreagate, then plot again with the grades broken up,
-
 summary(schools.lm)
+```
+
+```{r, fig.width=12}
+schools %>% filter(SEX != "A") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+  facet_grid(TEST~REGION) +
+  geom_point() +
+  geom_smooth(method = "lm", mapping=aes()) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+```
+
+```{r, fig.width=12}
+schools %>% filter(RACE != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+  facet_grid(TEST~RACE) +
+  geom_point() +
+  geom_smooth(method = "lm", mapping=aes()) + 
+  scale_x_continuous(n.breaks = 3) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+```
+
+```{r, fig.width=12}
+schools %>% filter(SEX != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+  facet_grid(TEST~SEX) +
+  geom_point() +
+  geom_smooth(method = "lm", mapping=aes()) + 
+  scale_x_continuous(n.breaks = 3) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Sex") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
 ```
