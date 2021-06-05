@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = FALSE, fig.align = 'center', message = FALSE, warni
 ```{r}
 library(readxl)
 library(tidyverse)
+library(gridExtra)
 ```
 
 # Understanding US School Expenditures and Test Scores
@@ -100,7 +101,8 @@ schools <- schools %>%
                          `American Indian`="AM",
                          `Pacific Islander`="HP",
                          `Two or more races`="TR"),
-         SEX = fct_recode(SEX, All="A", Male="M", Female="F"))
+         SEX = fct_recode(SEX, All="A", Male="M", Female="F"),
+         GRADE = fct_recode(GRADE, `8th Grade`="G08", `4th Grade`="G04"))
 ```
 
 
@@ -123,9 +125,10 @@ schools %>%
 
 ```{r}
 schools %>%
-  filter(REGION!="NATIONAL", !is.na(SCORE), RACE=="A", SEX=="A") %>%
+  filter(RACE=="All", SEX=="All") %>%
   ggplot(aes(x=SCORE, fill=TEST)) + 
   geom_histogram(alpha=0.6, position="identity", bins = 50) +
+  facet_wrap(~GRADE) +
   labs(title = "Distribution of Math and Reading Test Scores")
 ```
 
@@ -263,10 +266,6 @@ broom::glance(schools.lm)$adj.r.squared
 
 So we finally add sex as well and we have run out of individual predictors to add. The final model we chose included the test, instruction expenditure, year, grade, race, region, and sex as predictors. It achieved the maximal adjusted R squared at 0.9215.
 
-```{r}
-summary(schools.lm)
-```
-
 ```{r, fig.width=12}
 schools %>% filter(SEX != "A") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
   facet_grid(TEST~REGION) +
@@ -294,4 +293,88 @@ schools %>% filter(SEX != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITUR
   scale_x_continuous(n.breaks = 3) +
   labs(title = "Test Score and Expenditure Relationships By Grade and Sex") +
   theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+```
+
+### Simulation and Predictive Checks
+
+```{r}
+schools <- schools %>% mutate(
+  SIM_SCORE = predict(schools.lm, newdata = schools)
+               + rnorm(length(schools), sd=sqrt(sigma(schools.lm)))
+)
+```
+
+```{r, fig.width=12}
+schools %>% filter(SEX != "A") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+  facet_grid(TEST~REGION) +
+  geom_point() +
+  geom_smooth(method = "lm", mapping=aes()) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+```
+
+```{r, fig.width=12}
+schools %>% filter(RACE != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+  facet_grid(TEST~RACE) +
+  geom_point() +
+  geom_smooth(method = "lm", mapping=aes()) + 
+  scale_x_continuous(n.breaks = 3) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+```
+
+```{r, fig.width=12}
+schools %>% filter(SEX != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+  facet_grid(TEST~SEX) +
+  geom_point() +
+  geom_smooth(method = "lm", mapping=aes()) + 
+  scale_x_continuous(n.breaks = 3) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Sex") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+```
+
+```{r}
+# TODO: ESHLEY Add units to Instruction Expenditure (INSTRUCTION_EXPENDITURE)
+# TODO: ESHLEY Make gridArrange work with a shared legend (https://www.rdocumentation.org/packages/lemon/versions/0.4.5/topics/grid_arrange_shared_legend)
+ 
+obs_plot <- schools %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_y_continuous(limits=c(180, 320)) +
+  labs(title = "Observed Scores", y = "Observed Scores") +
+  theme(legend.position = "None")
+
+sim_plot <- schools %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_y_continuous(limits=c(180, 320)) +
+  labs(title = "Simulated Scores") +
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+grid.arrange(obs_plot, sim_plot, ncol=2)
+```
+
+```{r}
+get_sim_r_sq <- function(n){
+  simulated <- predict(schools.lm, newdata = schools) +
+    rnorm(length(schools), sd=sqrt(sigma(schools.lm)))
+  return(broom::glance(lm(schools$SCORE ~ simulated))$r.squared)
+}
+
+n_sims <- 1000
+simulation_results <- tibble(`R Squared`=as_vector(map(1:n_sims, get_sim_r_sq)))
+```
+
+```{r}
+mean_r_sq <- mean(simulation_results$`R Squared`)
+
+simulation_results %>%
+  ggplot(mapping = aes(x=`R Squared`)) +
+  geom_histogram(bins=50) +
+  geom_vline(xintercept=mean_r_sq, color="Orange") +
+  annotate("text", x=mean_r_sq+0.0015, y=n_sims*0.025,
+           label=format(mean_r_sq, digits=3), color="Orange", size=5) +
+  labs(title = "Distribution of Percent of Observed Variation explained by Model")
 ```
