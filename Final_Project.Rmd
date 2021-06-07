@@ -1,30 +1,38 @@
 ---
 title: "Final Project"
 author: "Jackson Waschura, Bryan Liu, Camille Garlick, Eshley Freed-Doerr"
-date: "5/27/2021"
-output: html_document
+date: "6/6/2021"
+output: 
+  prettydoc::html_pretty:
+    theme: hpstr
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, fig.align = 'center', message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, fig.align = 'center', message = FALSE, warning = FALSE, fig.width=12, fig.height=5)
 ```
 
 ```{r}
 library(readxl)
 library(tidyverse)
 library(gridExtra)
+library(gganimate)
+library(gapminder)
 ```
 
 # Understanding US School Expenditures and Test Scores
 
-## Get the Data
+Gaps in educational success due to numerous factors such as socioeconomic class, race, sex, instruction expenditure, and more has been studied for decades. Today, computer algorithms allow the data to be analyzed more efficiently, and machine learning can be harnessed to make predictions on future data based off the knowledge regarding the observed data. Regression analysis proves to be an efficacious tool in detecting which factors are statistically significant in determining exam scores and extrapolating to predict future patterns. 
+
+In order to understand how school expenditures and various diversity indicators factor into students' test scores, we examine a dataset provided [here](https://www.kaggle.com/noriuk/us-education-datasets-unification-project). We cleaned the dataset and split observations into distinct geographical regions to ensure a statistically significant data quantity in each region. Splitting the data into geographical regions can be very informative, as geographical regions are often correlates for political views, major industries, etc. that can be investigated more in future.
+
+<center>
+![Region Divisions](usmap.png)
+</center>
 
 ```{r}
+# DATA GET AND CLEANING PART 1
 schools <- read_excel(here::here("data", "US_schools_data.xlsx"))
 ```
-
-## Clean the Data
-
 
 ```{r}
 # Select the relevant columns
@@ -42,7 +50,6 @@ schools <- schools %>%
   select(YEAR, STATE, TOTAL_EXPENDITURE:G08_TR_A_MATHEMATICS) 
 ```
 
-
 ```{r}
 # Pivot longer
 schools <- schools %>% 
@@ -53,7 +60,6 @@ schools <- schools %>%
     names_sep = "_"
   )
 ```
-
 
 ```{r}
 # Seperate into regions
@@ -80,15 +86,14 @@ schools <- schools %>%
     SEX = as.factor(SEX),
     RACE = as.factor(RACE)
   )
-# Write more on later: grouping based off geography is significant as geography correlates with lots of significant factors, such as political views of population, major industries, etc.
 ```
 
-```{r}
+```{r, include = FALSE}
 schools %>% distinct(RACE)
 ```
 
 ```{r}
-# Additional cleaning here maybe lmao
+# Additional cleaning here - make data better for visualising
 schools <- schools %>%
   filter(!is.na(SCORE)) %>%
   filter(REGION != "NATIONAL") %>%
@@ -105,12 +110,13 @@ schools <- schools %>%
          GRADE = fct_recode(GRADE, `8th Grade`="G08", `4th Grade`="G04"))
 ```
 
+## Defining the Model 
 
-## Data Visualization
+We proceed to examine the relationship between instructional expenditures and testing scores in the context of these geographical regions. The scores don't seem to vary much by region at all, as can be seen by the similar spread of data points on the y-axis of each visualisation, but the instruction expenditures widely vary depending on the region, indicating some relationship between instruction expenditures and geographical region, as could be expected. The midwest and south tend to have lower expenditures, while the northeast and west have much wider spreads of higher and lower expenditure values. 
 
-### Relationship between Instructional Expenditures and Testing Scores by Region
 
 ```{r, fig.height = 5}
+# DATA VISUALISATION PART 1
 # Excluding National: nothing significant about National here
 
 schools %>%
@@ -118,10 +124,10 @@ schools %>%
   ggplot(mapping=aes(color=REGION)) +
   geom_point(mapping=aes(y=SCORE, x=INSTRUCTION_EXPENDITURE), show.legend=FALSE) +
   facet_wrap(~ REGION, ncol = 2) +
-  labs(title = "Instructional Expenditures and Testing Scores by Region")
+  labs(title = "Instructional Expenditures and Testing Scores by Region", x = "Instruction Expenditure by State in $")
 ```
 
-### Distribution of Math and Reading Test Scores
+The data visualized above is including two distinct types of tests and two distinct ages of students. To glean more about the differences in how students perform depending on their age and test, we visualize the distribution of scores based on age and test below. 
 
 ```{r}
 schools %>%
@@ -129,11 +135,11 @@ schools %>%
   ggplot(aes(x=SCORE, fill=TEST)) + 
   geom_histogram(alpha=0.6, position="identity", bins = 50) +
   facet_wrap(~GRADE) +
-  labs(title = "Distribution of Math and Reading Test Scores")
+  labs(title = "Distribution of Math and Reading Test Scores", x = "Instruction Expenditure by State in $")
 ```
 
 
-### School Instructional Expenditures and Test Scores Over Time by Region
+An additional factor we may wish to consider is how our distribution of scores and expenditures by region might be changing over time. Below we examine the data in the context of decades to explore how the relationship between these variables are changing over time.
 
 
 ```{r, fig.width=10}
@@ -145,172 +151,204 @@ schools %>%
   ggplot(mapping=aes(color=REGION)) +
   geom_point(mapping=aes(y=SCORE, x=INSTRUCTION_EXPENDITURE), show.legend=FALSE) +
   facet_grid(REGION ~ DECADE) +
-  labs(title = "School Instructional Expenditures and Test Scores Over Time by Region")
+  labs(title = "School Instructional Expenditures and Test Scores Over Time by Region", x = "Instruction Expenditure by State in $")
 ```
 
+For each region, the spread of data across expenditures is clearly expanding and scores are getting higher. There is still no clear relationship between expenditure and score, but we absolutely see indication that depending on the region, and depending on the decade, we can more reliably predict what kind of data we see.
 
-## Linear Regression
+To confirm our suspicion that there is not a significant relationship between instruction expenditure and test scores, we use a linear regression model to calculate the r-squared value:
 
 ```{r}
-# Model Reading
-schools.lm = lm(SCORE~INSTRUCTION_EXPENDITURE,
-                data=filter(.data=schools, TEST == "READING"))
-broom::glance(schools.lm)$r.squared
+# LINEAR REGRESSION SECTION IN PART 1
+# Modeling both tests
+
+schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE, data=schools)
+cat("R-squared with instruction expenditure and tests as independent variables: ", broom::glance(schools.lm)$r.squared)
 ```
+The r-squared value is quite low for our model, at an approximately 12% fit, indicating that instruction expenditure is not a good fit for predicting score, as we suspected. Let's see whether this changes at all if we separate our tests. First we'll investigate if the r-squared changes if we only look at math tests:
 
 ```{r}
 # Model Mathematics
 
 schools.lm = lm(SCORE~INSTRUCTION_EXPENDITURE,
                 data=filter(.data=schools, TEST == "MATHEMATICS"))
-broom::glance(schools.lm)$r.squared
+cat("R-squared with mathematics test: ", broom::glance(schools.lm)$r.squared)
 ```
+And now we'll look at reading tests:
 
 ```{r}
-# Modeling both tests
-
-schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE, data=schools)
-broom::glance(schools.lm)$r.squared
+# Model Reading
+schools.lm = lm(SCORE~INSTRUCTION_EXPENDITURE,
+                data=filter(.data=schools, TEST == "READING"))
+cat("R-squared with reading test: ", broom::glance(schools.lm)$r.squared)
 ```
+The r-squared values get even smaller when we divide the tests into distinct math scores and reading scores, indicating that instruction expenditures may be slightly predictive of scores as a whole, but certainly could not be used to predict a typical students' individual math or reading score.
+
+So, let's start to identify what type of model might work better! We saw in our visualisations that the decade seemed to impact our visualisation, so let's include the year and calculate the r-squared.
 
 ```{r}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR, data=schools)
-broom::glance(schools.lm)$r.squared
+cat("R-squared with both tests and year: ", broom::glance(schools.lm)$r.squared)
 ```
-### Selecting the "Best" Model
-Describe the process we take (iteratively growing the model until adjusted R squared is maximized).
+The r-squared definitely changes, but it's still not the best model, as our independent variables explain merely 15% of the variability in score. So, as we add more variables to identify a good regression model to use, we will switch to using adjusted R-squared, which can be a better indicator of how predictive a model is when there are many independent variables being considered. We identify the best model by adding in variables to our model one at a time, and taking our best-fitting variable as our current model and then going back to adding each predictor one at a time. The predictors we will consider including now are the grade, sex, race of student along with the region.
 
-```{r}
+
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-```{r}
+
+```{r, include=FALSE}
+# FINDING THE BEST MODEL
+# First iteration: grade is best variable
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-
-```{r}
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+SEX, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-
-```{r}
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+RACE, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-
-```{r}
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+REGION, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
 
-So we should add grade and continue searching.
-
-```{r}
+```{r, include=FALSE}
+# Next iteration: Race is best variable
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+SEX, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-
-```{r}
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-
-```{r}
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+REGION, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
 
-So we should add race and continue searching.
-
-```{r}
+```{r, include=FALSE}
+# Next iteration: Region is best variable
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE+SEX, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
-
-```{r}
+```{r, include=FALSE}
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE+REGION, data=schools)
 broom::glance(schools.lm)$adj.r.squared
 ```
 
-So we should add region and continue searching.
+After this iterative process of determine which regression model works best, the final model we chose included the test, instruction expenditure, year, grade, race, region, and sex as predictors. It achieved the maximal adjusted R squared seen below at 0.9215.
 
 ```{r}
+# Final iteration:  sex is still good variable
 # Modeling with additional variables
 
 schools.lm = lm(SCORE~TEST+INSTRUCTION_EXPENDITURE+YEAR+GRADE+RACE+REGION+SEX, data=schools)
-broom::glance(schools.lm)$adj.r.squared
+cat("Adjusted r-squared: ", broom::glance(schools.lm)$adj.r.squared)
 ```
 
-So we finally add sex as well and we have run out of individual predictors to add. The final model we chose included the test, instruction expenditure, year, grade, race, region, and sex as predictors. It achieved the maximal adjusted R squared at 0.9215.
+## Visualizing and Interpreting the Model 
+
+We have our ideal regression model, so let's visualize the relationships between the variables in this model. The graphs below show relationships between the independent variables and the score. Each graph separates the regression lines and data points by grade, as eighth graders consistently score much higher than fourth graders. 
+
 
 ```{r, fig.width=12}
-schools %>% filter(SEX != "A") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+schools %>% 
+  filter(SEX != "A") %>% 
+  ggplot(gapminder, mapping = aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
   facet_grid(TEST~REGION) +
   geom_point() +
-  geom_smooth(method = "lm", mapping=aes()) +
-  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
-  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+  geom_smooth(method = "lm", mapping = aes()) +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Region", 
+       subtitle = "Year: {frame_time}", x = "Instruction Expenditure by State in $") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm")) +
+  transition_time(YEAR) +
+  ease_aes('linear')
 ```
 
+
+Our first graph shows how each region's scores tend to get higher over time, and instruction expenditure increases. 
+
 ```{r, fig.width=12}
-schools %>% filter(RACE != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+schools %>% 
+  filter(RACE != "All") %>% 
+  ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
   facet_grid(TEST~RACE) +
   geom_point() +
   geom_smooth(method = "lm", mapping=aes()) + 
   scale_x_continuous(n.breaks = 3) +
-  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Race", 
+       x = "Instruction Expenditure by State in $") +
   theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
 ```
+The next graph is faceted by race, and we clearly see a clear relationship between race, score, and instruction expenditure, where the race is predictive of the spread of instruction expenditure and how high/low test scores are in students. 
 
 ```{r, fig.width=12}
-schools %>% filter(SEX != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+schools %>% 
+  filter(SEX != "All") %>% 
+  ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
   facet_grid(TEST~SEX) +
   geom_point() +
   geom_smooth(method = "lm", mapping=aes()) + 
   scale_x_continuous(n.breaks = 3) +
-  labs(title = "Test Score and Expenditure Relationships By Grade and Sex") +
-  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+  labs(title = "Test Score and Expenditure Relationships By Grade and Sex", 
+       x = "Instruction Expenditure by State in $") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm")) 
 ```
 
-### Simulation and Predictive Checks
+Lastly, in the above graph we look at how sex is related to our other variables. While there are small differences between the sex, where females seem to score slightly higher on Reading and males seem to score slightly higher on Mathematics, sex doesn't seem to be as strong a predictor.
+
+## Validating model through generation of simulated data
+
+Now we'll use our model to make a simulated dataset, in order to compare the observed data with the simulation. We'll explore the simulated dataset with the same graphs we just used above.
 
 ```{r}
-schools <- schools %>% mutate(
+# SIMULATION AND PREDICTIVE CHECKS SECTION
+schools <- schools %>% 
+  mutate(
   SIM_SCORE = predict(schools.lm, newdata = schools)
                + rnorm(length(schools), sd=sqrt(sigma(schools.lm)))
-)
+  )
 ```
 
 ```{r, fig.width=12}
-schools %>% filter(SEX != "A") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+schools %>% 
+  filter(SEX != "A") %>% 
+  ggplot(gapminder, mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
   facet_grid(TEST~REGION) +
   geom_point() +
   geom_smooth(method = "lm", mapping=aes()) +
-  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
-  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
+  labs(title = "Test Score and Expenditure Relationships By Grade and Region", 
+       subtitle = "Year: {frame_time}", x = "Instruction Expenditure by State in $") +
+  theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm")) +
+  transition_time(YEAR) +
+  ease_aes('linear')
 ```
 
 ```{r, fig.width=12}
@@ -319,7 +357,8 @@ schools %>% filter(RACE != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITU
   geom_point() +
   geom_smooth(method = "lm", mapping=aes()) + 
   scale_x_continuous(n.breaks = 3) +
-  labs(title = "Test Score and Expenditure Relationships By Grade and Region") +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Race", 
+       x = "Instruction Expenditure by State in $") +
   theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
 ```
 
@@ -329,34 +368,70 @@ schools %>% filter(SEX != "All") %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITUR
   geom_point() +
   geom_smooth(method = "lm", mapping=aes()) + 
   scale_x_continuous(n.breaks = 3) +
-  labs(title = "Test Score and Expenditure Relationships By Grade and Sex") +
+  labs(title = "Test Score and Expenditure Relationships By Grade and Sex", 
+       x = "Instruction Expenditure by State in $") +
   theme(panel.spacing.x = unit(6, "mm"), panel.spacing.y = unit(6, "mm"))
 ```
 
+The graphs above are very similar to the distributions we saw before. The sets of graphs look very similar, though the simulated scored tend to have less variability, which is good as it indicates our model is reliably predictive.
+
+Let's compare our dataset side-by-side to see precisely how different our simulated dataset is from our observed data.
+
 ```{r}
-# TODO: ESHLEY Add units to Instruction Expenditure (INSTRUCTION_EXPENDITURE)
-# TODO: ESHLEY Make gridArrange work with a shared legend (https://www.rdocumentation.org/packages/lemon/versions/0.4.5/topics/grid_arrange_shared_legend)
- 
-obs_plot <- schools %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
+# The below section is hugely based on this article: (here)[https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/]
+
+# The actual plots
+obs_plot <- schools %>% 
+  ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SCORE, color=GRADE)) +
   geom_point() +
   geom_smooth(method = "lm") +
   scale_y_continuous(limits=c(180, 320)) +
-  labs(title = "Observed Scores", y = "Observed Scores") +
+  labs(title = "Observed Scores",
+       x = "Instruction Expenditure by State in $") +
   theme(legend.position = "None")
 
-sim_plot <- schools %>% ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+sim_plot <- schools %>% 
+  ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
   geom_point() +
   geom_smooth(method = "lm") +
   scale_y_continuous(limits=c(180, 320)) +
-  labs(title = "Simulated Scores") +
-  theme(axis.text.y = element_blank(),
-        axis.title.y = element_blank(),
-        axis.ticks.y = element_blank())
+  labs(title = "Simulated Scores", 
+       x = "Instruction Expenditure by State in $") +
+  theme(legend.position = "None")
 
-grid.arrange(obs_plot, sim_plot, ncol=2)
+# Below plot is just to create legend
+
+legend_sim_plot <- schools %>% 
+  ggplot(mapping=aes(x=INSTRUCTION_EXPENDITURE, y=SIM_SCORE, color=GRADE)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_y_continuous(limits=c(180, 320)) +
+  labs(title = "Simulated Scores", 
+       x = "Instruction Expenditure by State in $") +
+  theme(legend.position = "bottom")
+
+# Function (used a function found online)
+
+extract_legend <- function(my_ggp) {
+  step1 <- ggplot_gtable(ggplot_build(my_ggp))
+  step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+  step3 <- step1$grobs[[step2]]
+  return(step3)
+}
+
+legend <- extract_legend(legend_sim_plot)
+
+#Arrange
+
+grid.arrange(arrangeGrob(obs_plot, sim_plot, ncol = 2),
+             legend, nrow = 2)
 ```
+As we saw from our graphs above, the distributions are very similar, though there are vastly fewer outliers in the simulation. Because the simulated scores were generated with a constant variance, the simulated data appears more compact (lower spread, less fanning-out). As a result, it is expected that fewer outliers will be observed in the simulated data.
+
+Since we have a reliable simulation, we create 1000 simulations and regress the observed data against each simulated data. We then plot the R^2 of these regressions below.
 
 ```{r}
+# GENERATING MULTIPLE PREDICTIVE CHECKS
 get_sim_r_sq <- function(n){
   simulated <- predict(schools.lm, newdata = schools) +
     rnorm(length(schools), sd=sqrt(sigma(schools.lm)))
@@ -378,3 +453,7 @@ simulation_results %>%
            label=format(mean_r_sq, digits=3), color="Orange", size=5) +
   labs(title = "Distribution of Percent of Observed Variation explained by Model")
 ```
+
+The R-squared is an indication for how well the simulation fits the observed data, and as the graph shows, are simulations have a mean fit of 91.2%, and the vast majority of simulations with an R-squared score of above 90%. This high value of R^2 indicates that the model is able to capture most of the variance in the original dataset with the simulated data that it produces. 
+
+Our multivariate linear regression model, having been validated by our many simulations, will produce a simulated dataset that well-represents student test scores across mathematics and reading.
